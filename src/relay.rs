@@ -1,20 +1,17 @@
-use futures::future::join_all;
-use futures::future::try_join;
+use futures::future::{join_all, try_join};
 use futures::FutureExt;
 use std::error::Error;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::{Arc, RwLock};
-use tokio;
-use tokio::io;
-use tokio::io::{AsyncWriteExt, AsyncReadExt};
-use tokio::net;
 
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net;
 
 use crate::resolver;
 use crate::udp;
 use realm::RelayConfig;
+
 use tokio::net::tcp::{ReadHalf, WriteHalf};
-use std::fs::read;
 
 // Initialize DNS recolver
 // Set up channel between listener and resolver
@@ -25,7 +22,7 @@ pub async fn start_relay(configs: Vec<RelayConfig>) {
 
     let mut remote_ips: Vec<Arc<RwLock<std::net::IpAddr>>> = Vec::new();
     for _ in 0..remote_addrs.len() {
-        remote_ips.push(Arc::new(RwLock::new(default_ip.clone())))
+        remote_ips.push(Arc::new(RwLock::new(default_ip)))
     }
     let cloned_remote_ips = remote_ips.clone();
 
@@ -36,7 +33,7 @@ pub async fn start_relay(configs: Vec<RelayConfig>) {
     let mut iter = configs.into_iter().zip(remote_ips);
     let mut runners = vec![];
 
-    while let Some((config, remote_ip)) = iter.next() {
+    for (config, remote_ip) in iter.by_ref() {
         runners.push(tokio::spawn(run(config, remote_ip)));
     }
 
@@ -58,7 +55,7 @@ pub async fn run(config: RelayConfig, remote_ip: Arc<RwLock<IpAddr>>) {
     // Start UDP connection
     let udp_remote_ip = remote_ip.clone();
     tokio::spawn(udp::transfer_udp(
-        client_socket.clone(),
+        client_socket,
         remote_socket.port(),
         udp_remote_ip,
     ));
@@ -71,9 +68,9 @@ pub async fn run(config: RelayConfig, remote_ip: Arc<RwLock<IpAddr>>) {
                 remote_socket = format!("{}:{}", &(remote_ip.read().unwrap()), config.remote_port)
                     .parse()
                     .unwrap();
-                let transfer = transfer_tcp(inbound, remote_socket.clone()).map(|r| {
-                    if let Err(_) = r {
-                        return;
+                let transfer = transfer_tcp(inbound, remote_socket).map(|r| {
+                    if r.is_err() {
+                        println!("TCP transfer failed");
                     }
                 });
                 tokio::spawn(transfer);
@@ -93,9 +90,6 @@ async fn transfer_tcp(
     mut inbound: net::TcpStream,
     remote_socket: SocketAddr,
 ) -> Result<(), Box<dyn Error>> {
-    #[cfg(target_os = "linux")]
-    use crate::zero_copy::zero_copy as copy_data;
-
     let mut outbound = net::TcpStream::connect(remote_socket).await?;
     outbound.set_nodelay(true).unwrap();
     let (mut ri, mut wi) = inbound.split();
@@ -118,8 +112,10 @@ async fn transfer_tcp(
     Ok(())
 }
 
-#[cfg(not(target_os = "linux"))]
-async fn copy_data(reader: &mut ReadHalf<'_>, writer: &mut WriteHalf<'_>) -> Result<(), std::io::Error> {
+async fn copy_data(
+    reader: &mut ReadHalf<'_>,
+    writer: &mut WriteHalf<'_>,
+) -> Result<(), std::io::Error> {
     let mut buf = vec![0u8; 0x4000];
     let mut n: usize;
 

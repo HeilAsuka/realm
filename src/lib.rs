@@ -90,7 +90,7 @@ impl AnotherConfigFile {
         return self
             .relays
             .iter()
-            .map(|relay| relay.into_relayconfig())
+            .map(|relay| relay.to_relayconfig())
             .collect::<Vec<RelayConfig>>();
     }
 }
@@ -102,7 +102,7 @@ pub struct Relay {
 }
 
 impl Relay {
-    fn into_relayconfig(&self) -> RelayConfig {
+    fn to_relayconfig(&self) -> RelayConfig {
         let (listening_address, listening_port) = self
             .listen
             .rsplit_once(":")
@@ -137,7 +137,7 @@ pub fn parse_arguments() -> Vec<RelayConfig> {
     };
 
     let client_parse: Vec<&str> = client
-        .rsplitn(2, ":")
+        .rsplitn(2, ':')
         .collect::<Vec<&str>>()
         .into_iter()
         .rev()
@@ -148,7 +148,7 @@ pub fn parse_arguments() -> Vec<RelayConfig> {
     let listening_address = String::from_str(client_parse[0]).unwrap();
 
     let remote_parse: Vec<&str> = remote
-        .rsplitn(2, ":")
+        .rsplitn(2, ':')
         .collect::<Vec<&str>>()
         .into_iter()
         .rev()
@@ -158,7 +158,7 @@ pub fn parse_arguments() -> Vec<RelayConfig> {
     }
 
     vec![RelayConfig {
-        listening_address: if listening_address == "" {
+        listening_address: if listening_address.is_empty() {
             String::from("0.0.0.0")
         } else {
             listening_address
@@ -174,10 +174,10 @@ fn ports2individuals(ports: Vec<String>) -> Vec<u16> {
 
     // Convert port ranges to individual ports
     for lp in ports {
-        if lp.find("-").is_none() {
+        if !lp.contains('-') {
             output.push(lp.parse::<u16>().unwrap())
         } else {
-            let ints: Vec<&str> = lp.split("-").collect();
+            let ints: Vec<&str> = lp.split('-').collect();
             if ints.len() != 2 {
                 panic!("Invalid range")
             }
@@ -196,11 +196,8 @@ fn ports2individuals(ports: Vec<String>) -> Vec<u16> {
 }
 
 pub fn load_config(p: PathBuf) -> Vec<RelayConfig> {
-    // let path = Path::new(&p);
-    // let display = p.display();
-
     let config_file_string = read_to_string(&p).unwrap();
-    let config = serde_json::from_str::<ConfigFile>(config_file_string.clone().as_str());
+    let config = serde_json::from_str::<ConfigFile>(config_file_string.as_str());
     let config = match config {
         Err(_e) => {
             println!("AnotherConfigFile format may help you.");
