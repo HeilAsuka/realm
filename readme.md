@@ -1,4 +1,4 @@
-![realm](https://github.com/zhboner/realm/workflows/realm/badge.svg)
+[![Build and test](https://github.com/HeilAsuka/realm/actions/workflows/build-and-test.yaml/badge.svg)](https://github.com/HeilAsuka/realm/actions/workflows/build-and-test.yaml)
 
 [中文说明](https://zhb.me/realm)
 
