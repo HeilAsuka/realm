@@ -2,7 +2,8 @@ use futures::future::{join_all, try_join};
 use futures::FutureExt;
 use std::error::Error;
 use std::net::{IpAddr, SocketAddr};
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net;
@@ -48,7 +49,7 @@ pub async fn run(config: RelayConfig, remote_ip: Arc<RwLock<IpAddr>>) {
     let tcp_listener = net::TcpListener::bind(&client_socket).await.unwrap();
 
     let mut remote_socket: SocketAddr =
-        format!("{}:{}", remote_ip.read().unwrap(), config.remote_port)
+        format!("{}:{}", remote_ip.read().await, config.remote_port)
             .parse()
             .unwrap();
 
@@ -65,7 +66,7 @@ pub async fn run(config: RelayConfig, remote_ip: Arc<RwLock<IpAddr>>) {
         match tcp_listener.accept().await {
             Ok((inbound, _)) => {
                 inbound.set_nodelay(true).unwrap();
-                remote_socket = format!("{}:{}", &(remote_ip.read().unwrap()), config.remote_port)
+                remote_socket = format!("{}:{}", &(remote_ip.read().await), config.remote_port)
                     .parse()
                     .unwrap();
                 let transfer = transfer_tcp(inbound, remote_socket).map(|r| {
@@ -76,11 +77,10 @@ pub async fn run(config: RelayConfig, remote_ip: Arc<RwLock<IpAddr>>) {
                 tokio::spawn(transfer);
             }
             Err(e) => {
-                println!(
+                panic!(
                     "TCP forward error {}:{}, {}",
                     config.remote_address, config.remote_port, e
                 );
-                break;
             }
         }
     }

@@ -215,20 +215,6 @@ pub fn load_config(p: PathBuf) -> Vec<RelayConfig> {
     let listening_ports = ports2individuals(config.listening_ports);
     let remote_ports = ports2individuals(config.remote_ports);
 
-    // if listening_ports.len() != remote_ports.len() {
-    //     panic!("Unmatched number of listening and remot ports")
-    // }
-
-    // if config.listening_addresses.len() != 1
-    //     && config.listening_addresses.len() != listening_ports.len()
-    // {
-    //     panic!("Unmatched listening address and ports")
-    // }
-
-    // if config.remote_addresses.len() != 1 && config.remote_addresses.len() != remote_ports.len() {
-    //     panic!("Unmatched remote address and ports")
-    // }
-
     let mut relay_configs = vec![];
     let total = listening_ports.len();
 
