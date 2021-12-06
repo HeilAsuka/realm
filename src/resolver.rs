@@ -10,6 +10,7 @@ use trust_dns_resolver::TokioAsyncResolver;
 async fn resolve_single(resolver: &TokioAsyncResolver, addr: &str) -> Result<net::IpAddr, Error> {
     if addr.parse::<net::IpAddr>().is_ok() {
         return Ok(addr.parse::<net::IpAddr>().unwrap());
+
     }
 
     let remote_addr = format!("{}.", addr);
@@ -22,6 +23,7 @@ async fn resolve_single(resolver: &TokioAsyncResolver, addr: &str) -> Result<net
                 Ok(ip_v6)
             } else {
                 Err(anyhow!("Cannot resolve {}", addr))
+
             }
         }
     }
@@ -34,7 +36,7 @@ pub async fn resolve(addr_list: Vec<String>, ip_list: Vec<Arc<RwLock<net::IpAddr
             .unwrap();
     let cache: IpAddr = "0.0.0.0".parse().unwrap();
     let size = addr_list.len();
-    let mut cache_list = vec![cache; size];
+    let mut cache_list = vec![cache.clone(); size];
     loop {
         for (i, addr) in addr_list.iter().enumerate() {
             match resolve_single(&resolver, addr).await {
@@ -53,3 +55,4 @@ pub async fn resolve(addr_list: Vec<String>, ip_list: Vec<Arc<RwLock<net::IpAddr
         sleep(Duration::from_secs(60)).await;
     }
 }
+
